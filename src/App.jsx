@@ -11281,82 +11281,224 @@ function ControlsView({ systems, vulnerabilities, setVulnerabilities, controlSta
 }
 
 // ── Dashboard ───────────────────────────────────────────────────────────── ─────────────────────────────────────────────────────────────
-function Dashboard({ systems, vulnerabilities, poams }) {
+function Dashboard({ systems, vulnerabilities, poams, controlStatuses }) {
   const total = vulnerabilities.length;
   const open = vulnerabilities.filter(v => v.status === "Open").length;
+  const closed = vulnerabilities.filter(v => v.status === "Closed").length;
   const critical = vulnerabilities.filter(v => v.severity === "Critical").length;
   const high = vulnerabilities.filter(v => v.severity === "High").length;
+  const medium = vulnerabilities.filter(v => v.severity === "Medium").length;
+  const low = vulnerabilities.filter(v => v.severity === "Low").length;
   const withPoam = vulnerabilities.filter(v => v.poamId).length;
   const poamOpen = poams.filter(p => p.status === "Open").length;
+  const poamClosed = poams.filter(p => p.status === "Closed").length;
 
   const controlMap = {};
   vulnerabilities.forEach(v => (v.controls || []).forEach(c => { controlMap[c] = (controlMap[c] || 0) + 1; }));
-  const topControls = Object.entries(controlMap).sort((a,b) => b[1]-a[1]).slice(0, 6);
+  const topControls = Object.entries(controlMap).sort((a,b) => b[1]-a[1]).slice(0, 8);
+
+  const compliant = Object.values(controlStatuses).filter(s => s.status === "Compliant").length;
+  const nonCompliant = Object.values(controlStatuses).filter(s => s.status === "Non-Compliant" || s.status === "Not Implemented").length;
+  const totalAssessed = Object.values(controlStatuses).length;
+
+  // Severity breakdown bar widths
+  const sevMax = Math.max(critical, high, medium, low, 1);
 
   return (
-    <div>
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ color: "#0a1628", fontFamily: "'Syne', sans-serif", fontSize: 22, margin: 0 }}>RMF Dashboard</h2>
-        <p style={{ color: "#6b7a99", fontSize: 13, margin: "4px 0 0", fontFamily: "'DM Mono', monospace" }}>Organization-wide security posture</p>
-      </div>
-
-      {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 28 }}>
-        {[
-          { label: "SYSTEMS", value: systems.length, color: "#1a3a7a" },
-          { label: "TOTAL VULNS", value: total, color: "#6633bb" },
-          { label: "OPEN", value: open, color: "#cc2222" },
-          { label: "CRITICAL", value: critical, color: "#bb0000" },
-          { label: "HIGH", value: high, color: "#c45200" },
-          { label: "POAMS", value: poams.length, color: "#8a6200" },
-          { label: "OPEN POAMS", value: poamOpen, color: "#c45200" },
-          { label: "POAM COVERAGE", value: total > 0 ? Math.round(withPoam / total * 100) + "%" : "—", color: "#1a7a4a" },
-        ].map(stat => (
-          <div key={stat.label} style={{ background: "#ffffff", border: "1px solid #c5d0de", borderRadius: 10, padding: 20, borderTop: `3px solid ${stat.color}` }}>
-            <div style={{ color: stat.color, fontSize: 28, fontWeight: 900, fontFamily: "'Syne', sans-serif" }}>{stat.value}</div>
-            <div style={{ color: "#6b7a99", fontSize: 10, fontFamily: "'DM Mono', monospace", letterSpacing: 1, marginTop: 4 }}>{stat.label}</div>
+    <div style={{ minHeight: "100vh", background: "#f0f4f8" }}>
+      {/* Header bar */}
+      <div style={{ background: "#0a1628", padding: "28px 40px 24px", borderBottom: "3px solid #1a3a7a" }}>
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+          <div>
+            <h2 style={{ color: "#ffffff", fontFamily: "'Syne', sans-serif", fontSize: 28, margin: 0, letterSpacing: 1 }}>RMF DASHBOARD</h2>
+            <p style={{ color: "#7caadf", fontSize: 12, margin: "6px 0 0", fontFamily: "'DM Mono', monospace", letterSpacing: 2 }}>ORGANIZATION-WIDE SECURITY POSTURE · NIST SP 800-53 REV 5</p>
           </div>
-        ))}
+          <div style={{ color: "#7caadf", fontSize: 11, fontFamily: "'DM Mono', monospace", textAlign: "right" }}>
+            <div>{systems.length} SYSTEM{systems.length !== 1 ? "S" : ""} REGISTERED</div>
+            <div style={{ color: "#4a8adf", marginTop: 2 }}>{ALL_CONTROLS.length} CONTROLS IN CATALOG</div>
+          </div>
+        </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-        {/* Systems list */}
-        <div style={{ background: "#ffffff", border: "1px solid #c5d0de", borderRadius: 12, padding: 24 }}>
-          <h3 style={{ color: "#3a4a6b", fontFamily: "'DM Mono', monospace", fontSize: 12, letterSpacing: 1, marginBottom: 16, marginTop: 0 }}>SYSTEMS STATUS</h3>
-          {systems.length === 0 && <p style={{ color: "#8a9ab8", fontFamily: "'DM Mono', monospace", fontSize: 12 }}>No systems registered.</p>}
-          {systems.map(sys => {
-            const sysVulns = vulnerabilities.filter(v => v.systemId === sys.id);
-            const openCount = sysVulns.filter(v => v.status === "Open").length;
-            const step = RMF_STEPS.find(s => s.id === sys.rmfStep);
-            return (
-              <div key={sys.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid #e8eef6" }}>
-                <div>
-                  <div style={{ color: "#0a1628", fontSize: 14, fontFamily: "'Syne', sans-serif" }}>{sys.name}</div>
-                  <div style={{ color: "#6b7a99", fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{step?.label} · {sys.impact} Impact</div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ color: openCount > 0 ? "#cc2222" : "#1a7a4a", fontSize: 16, fontWeight: 900, fontFamily: "'Syne', sans-serif" }}>{openCount}</div>
-                  <div style={{ color: "#6b7a99", fontSize: 10, fontFamily: "'DM Mono', monospace" }}>OPEN</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+      <div style={{ padding: "28px 40px" }}>
 
-        {/* Top controls affected */}
-        <div style={{ background: "#ffffff", border: "1px solid #c5d0de", borderRadius: 12, padding: 24 }}>
-          <h3 style={{ color: "#3a4a6b", fontFamily: "'DM Mono', monospace", fontSize: 12, letterSpacing: 1, marginBottom: 16, marginTop: 0 }}>TOP CONTROLS AFFECTED</h3>
-          {topControls.length === 0 && <p style={{ color: "#8a9ab8", fontFamily: "'DM Mono', monospace", fontSize: 12 }}>No control data yet.</p>}
-          {topControls.map(([ctrl, count]) => (
-            <div key={ctrl} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-              <Badge color="#ccddf5" textColor="#1a4a8a">{ctrl}</Badge>
-              <div style={{ flex: 1, background: "#e8eef6", borderRadius: 4, height: 8, overflow: "hidden" }}>
-                <div style={{ width: `${Math.min(100, (count / (topControls[0]?.[1] || 1)) * 100)}%`, height: "100%", background: "#1a3a7a", borderRadius: 4 }} />
-              </div>
-              <span style={{ color: "#3a4a6b", fontSize: 12, fontFamily: "'DM Mono', monospace", minWidth: 24 }}>{count}</span>
+        {/* Primary stat tiles */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(8, 1fr)", gap: 14, marginBottom: 28 }}>
+          {[
+            { label: "SYSTEMS",      value: systems.length,    color: "#1a3a7a", bg: "#d0dff5" },
+            { label: "TOTAL VULNS",  value: total,             color: "#6633bb", bg: "#ede0ff" },
+            { label: "OPEN",         value: open,              color: "#cc2222", bg: "#ffe0e0" },
+            { label: "CLOSED",       value: closed,            color: "#1a7a4a", bg: "#d4f5e5" },
+            { label: "CRITICAL",     value: critical,          color: "#aa0000", bg: "#ffd0d0" },
+            { label: "HIGH",         value: high,              color: "#c45200", bg: "#ffe8d0" },
+            { label: "POAMS",        value: poams.length,      color: "#8a6200", bg: "#fff3c0" },
+            { label: "OPEN POAMS",   value: poamOpen,          color: "#c45200", bg: "#ffe8d0" },
+          ].map(stat => (
+            <div key={stat.label} style={{ background: "#ffffff", border: "1px solid #c5d0de", borderRadius: 10, padding: "18px 16px", borderTop: `4px solid ${stat.color}`, textAlign: "center" }}>
+              <div style={{ color: stat.color, fontSize: 34, fontWeight: 900, fontFamily: "'Syne', sans-serif", lineHeight: 1 }}>{stat.value}</div>
+              <div style={{ color: "#6b7a99", fontSize: 9, fontFamily: "'DM Mono', monospace", letterSpacing: 1, marginTop: 8 }}>{stat.label}</div>
             </div>
           ))}
         </div>
+
+        {/* Main 3-column grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", gap: 20, marginBottom: 20 }}>
+
+          {/* Systems status */}
+          <div style={{ background: "#ffffff", border: "1px solid #c5d0de", borderRadius: 12, padding: 28 }}>
+            <h3 style={{ color: "#0a1628", fontFamily: "'Syne', sans-serif", fontSize: 13, letterSpacing: 1, marginBottom: 20, marginTop: 0, borderBottom: "2px solid #e8eef6", paddingBottom: 12 }}>SYSTEMS STATUS</h3>
+            {systems.length === 0 && <p style={{ color: "#8a9ab8", fontFamily: "'DM Mono', monospace", fontSize: 12 }}>No systems registered.</p>}
+            {systems.map(sys => {
+              const sysVulns = vulnerabilities.filter(v => v.systemId === sys.id);
+              const openCount = sysVulns.filter(v => v.status === "Open").length;
+              const critCount = sysVulns.filter(v => v.severity === "Critical").length;
+              const step = RMF_STEPS.find(s => s.id === sys.rmfStep);
+              const pct = sysVulns.length > 0 ? Math.round((sysVulns.filter(v => v.status === "Closed").length / sysVulns.length) * 100) : 100;
+              return (
+                <div key={sys.id} style={{ padding: "14px 0", borderBottom: "1px solid #e8eef6" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                    <div>
+                      <div style={{ color: "#0a1628", fontSize: 14, fontFamily: "'Syne', sans-serif", fontWeight: 700 }}>{sys.name}</div>
+                      <div style={{ color: "#6b7a99", fontSize: 10, fontFamily: "'DM Mono', monospace", marginTop: 2 }}>{step?.label || "—"} · {sys.impact} Impact</div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      {critCount > 0 && <span style={{ background: "#ffd0d0", color: "#aa0000", borderRadius: 6, padding: "2px 8px", fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>CRIT {critCount}</span>}
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ color: openCount > 0 ? "#cc2222" : "#1a7a4a", fontSize: 20, fontWeight: 900, fontFamily: "'Syne', sans-serif", lineHeight: 1 }}>{openCount}</div>
+                        <div style={{ color: "#6b7a99", fontSize: 9, fontFamily: "'DM Mono', monospace" }}>OPEN</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ flex: 1, background: "#e8eef6", borderRadius: 4, height: 6, overflow: "hidden" }}>
+                      <div style={{ width: `${pct}%`, height: "100%", background: pct === 100 ? "#1a7a4a" : pct > 50 ? "#c45200" : "#cc2222", borderRadius: 4, transition: "width 0.3s" }} />
+                    </div>
+                    <span style={{ color: "#6b7a99", fontSize: 10, fontFamily: "'DM Mono', monospace", minWidth: 36 }}>{pct}%</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Severity breakdown */}
+          <div style={{ background: "#ffffff", border: "1px solid #c5d0de", borderRadius: 12, padding: 28 }}>
+            <h3 style={{ color: "#0a1628", fontFamily: "'Syne', sans-serif", fontSize: 13, letterSpacing: 1, marginBottom: 20, marginTop: 0, borderBottom: "2px solid #e8eef6", paddingBottom: 12 }}>SEVERITY BREAKDOWN</h3>
+            {[
+              { label: "Critical", value: critical, color: "#aa0000", bg: "#ffd0d0" },
+              { label: "High",     value: high,     color: "#c45200", bg: "#ffe8d0" },
+              { label: "Medium",   value: medium,   color: "#a07800", bg: "#fff3c0" },
+              { label: "Low",      value: low,      color: "#1a7a4a", bg: "#d4f5e5" },
+            ].map(s => (
+              <div key={s.label} style={{ marginBottom: 20 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                  <span style={{ color: s.color, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>{s.label.toUpperCase()}</span>
+                  <span style={{ color: "#0a1628", fontSize: 18, fontWeight: 900, fontFamily: "'Syne', sans-serif" }}>{s.value}</span>
+                </div>
+                <div style={{ background: "#e8eef6", borderRadius: 6, height: 12, overflow: "hidden" }}>
+                  <div style={{ width: `${(s.value / sevMax) * 100}%`, height: "100%", background: s.color, borderRadius: 6, transition: "width 0.4s" }} />
+                </div>
+              </div>
+            ))}
+
+            <div style={{ marginTop: 28, borderTop: "1px solid #e8eef6", paddingTop: 20 }}>
+              <h3 style={{ color: "#0a1628", fontFamily: "'Syne', sans-serif", fontSize: 13, letterSpacing: 1, marginBottom: 16, marginTop: 0 }}>POAM STATUS</h3>
+              {[
+                { label: "Open",   value: poamOpen,   color: "#c45200" },
+                { label: "Closed", value: poamClosed, color: "#1a7a4a" },
+              ].map(s => (
+                <div key={s.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <span style={{ color: "#6b7a99", fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{s.label.toUpperCase()}</span>
+                  <span style={{ color: s.color, fontSize: 20, fontWeight: 900, fontFamily: "'Syne', sans-serif" }}>{s.value}</span>
+                </div>
+              ))}
+              {total > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ color: "#6b7a99", fontSize: 10, fontFamily: "'DM Mono', monospace" }}>POAM COVERAGE</span>
+                    <span style={{ color: "#1a3a7a", fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>{Math.round(withPoam / total * 100)}%</span>
+                  </div>
+                  <div style={{ background: "#e8eef6", borderRadius: 4, height: 8 }}>
+                    <div style={{ width: `${Math.round(withPoam / total * 100)}%`, height: "100%", background: "#1a3a7a", borderRadius: 4 }} />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Controls compliance */}
+          <div style={{ background: "#ffffff", border: "1px solid #c5d0de", borderRadius: 12, padding: 28 }}>
+            <h3 style={{ color: "#0a1628", fontFamily: "'Syne', sans-serif", fontSize: 13, letterSpacing: 1, marginBottom: 20, marginTop: 0, borderBottom: "2px solid #e8eef6", paddingBottom: 12 }}>CONTROL COMPLIANCE</h3>
+
+            {totalAssessed === 0 ? (
+              <p style={{ color: "#8a9ab8", fontFamily: "'DM Mono', monospace", fontSize: 12 }}>No controls assessed yet.</p>
+            ) : (
+              <>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+                  <div style={{ position: "relative", width: 120, height: 120 }}>
+                    <svg width="120" height="120" viewBox="0 0 120 120">
+                      <circle cx="60" cy="60" r="50" fill="none" stroke="#e8eef6" strokeWidth="14" />
+                      <circle cx="60" cy="60" r="50" fill="none" stroke="#1a7a4a" strokeWidth="14"
+                        strokeDasharray={`${(compliant / totalAssessed) * 314} 314`}
+                        strokeLinecap="round"
+                        transform="rotate(-90 60 60)" />
+                    </svg>
+                    <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", textAlign: "center" }}>
+                      <div style={{ color: "#1a7a4a", fontSize: 24, fontWeight: 900, fontFamily: "'Syne', sans-serif" }}>{totalAssessed > 0 ? Math.round(compliant/totalAssessed*100) : 0}%</div>
+                      <div style={{ color: "#6b7a99", fontSize: 9, fontFamily: "'DM Mono', monospace" }}>COMPLIANT</div>
+                    </div>
+                  </div>
+                </div>
+                {[
+                  { label: "Compliant",      value: compliant,                                              color: "#1a7a4a", bg: "#d4f5e5" },
+                  { label: "Non-Compliant",  value: nonCompliant,                                           color: "#cc2222", bg: "#ffe0e0" },
+                  { label: "Not Assessed",   value: ALL_CONTROLS.length - totalAssessed,                    color: "#6b7a99", bg: "#e8eef6" },
+                ].map(s => (
+                  <div key={s.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", borderRadius: 8, background: s.bg, marginBottom: 8 }}>
+                    <span style={{ color: s.color, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>{s.label.toUpperCase()}</span>
+                    <span style={{ color: s.color, fontSize: 20, fontWeight: 900, fontFamily: "'Syne', sans-serif" }}>{s.value}</span>
+                  </div>
+                ))}
+              </>
+            )}
+
+            <div style={{ marginTop: 24, borderTop: "1px solid #e8eef6", paddingTop: 20 }}>
+              <h3 style={{ color: "#0a1628", fontFamily: "'Syne', sans-serif", fontSize: 13, letterSpacing: 1, marginBottom: 14, marginTop: 0 }}>TOP CONTROLS AFFECTED</h3>
+              {topControls.length === 0 && <p style={{ color: "#8a9ab8", fontFamily: "'DM Mono', monospace", fontSize: 12 }}>No vulnerability data yet.</p>}
+              {topControls.map(([ctrl, count]) => (
+                <div key={ctrl} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <Badge color="#ccddf5" textColor="#1a4a8a">{ctrl}</Badge>
+                  <div style={{ flex: 1, background: "#e8eef6", borderRadius: 4, height: 7, overflow: "hidden" }}>
+                    <div style={{ width: `${Math.min(100, (count / (topControls[0]?.[1] || 1)) * 100)}%`, height: "100%", background: "#1a3a7a", borderRadius: 4 }} />
+                  </div>
+                  <span style={{ color: "#3a4a6b", fontSize: 12, fontFamily: "'DM Mono', monospace", minWidth: 20, textAlign: "right" }}>{count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* RMF Steps progress bar across full width */}
+        <div style={{ background: "#ffffff", border: "1px solid #c5d0de", borderRadius: 12, padding: 28 }}>
+          <h3 style={{ color: "#0a1628", fontFamily: "'Syne', sans-serif", fontSize: 13, letterSpacing: 1, marginBottom: 24, marginTop: 0, borderBottom: "2px solid #e8eef6", paddingBottom: 12 }}>RMF STEP DISTRIBUTION</h3>
+          {systems.length === 0 ? (
+            <p style={{ color: "#8a9ab8", fontFamily: "'DM Mono', monospace", fontSize: 12 }}>No systems registered.</p>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: `repeat(${RMF_STEPS.length}, 1fr)`, gap: 12 }}>
+              {RMF_STEPS.map(step => {
+                const count = systems.filter(s => s.rmfStep === step.id).length;
+                return (
+                  <div key={step.id} style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 22, marginBottom: 8 }}>{step.icon || "◈"}</div>
+                    <div style={{ background: count > 0 ? "#1a3a7a" : "#e8eef6", borderRadius: 8, height: Math.max(8, (count / systems.length) * 80), marginBottom: 8, transition: "height 0.4s", minHeight: 8 }} />
+                    <div style={{ color: "#0a1628", fontSize: 18, fontWeight: 900, fontFamily: "'Syne', sans-serif" }}>{count}</div>
+                    <div style={{ color: "#6b7a99", fontSize: 9, fontFamily: "'DM Mono', monospace", letterSpacing: 1, marginTop: 4, lineHeight: 1.4 }}>{step.label?.toUpperCase() || step.id}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
@@ -12946,8 +13088,8 @@ export default function App() {
       </div>
 
       {/* Main content */}
-      <div style={{ marginLeft: 220, padding: 32, minHeight: "100vh" }}>
-        {tab === "dashboard" && <Dashboard systems={systems} vulnerabilities={vulnerabilities} poams={poams} />}
+      <div style={{ marginLeft: 220, padding: tab === "dashboard" ? 0 : 32, minHeight: "100vh" }}>
+        {tab === "dashboard" && <Dashboard systems={systems} vulnerabilities={vulnerabilities} poams={poams} controlStatuses={controlStatuses} />}
         {tab === "systems" && <SystemsView systems={systems} setSystems={setSystems} vulnerabilities={vulnerabilities} controlStatuses={controlStatuses} setControlStatuses={setControlStatuses} activeSystemId={activeSystemId} setActiveSystemId={setActiveSystemId} />}
         {tab === "vulnerabilities" && <VulnerabilitiesView vulnerabilities={vulnerabilities} setVulnerabilities={setVulnerabilities} systems={systems} setPoams={setPoams} defaultSystemId={activeSystemId} />}
         {tab === "controls" && <ControlsView systems={systems} vulnerabilities={vulnerabilities} setVulnerabilities={setVulnerabilities} controlStatuses={controlStatuses} setControlStatuses={setControlStatuses} poams={poams} setPoams={setPoams} defaultSystemId={activeSystemId} />}
