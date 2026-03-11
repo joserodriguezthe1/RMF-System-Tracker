@@ -1,4 +1,4 @@
-Here's a README summary for your GitHub repo:
+Got it! Here's the updated README with the screenshot included:
 
 ---
 
@@ -9,6 +9,12 @@ A comprehensive, browser-based **Risk Management Framework (RMF) compliance trac
 ## Overview
 
 NIST RMF Tracker is a single-file React application designed to help security teams manage and monitor their organization's compliance posture across the full NIST 800-53 Rev 5 control catalog. It provides a centralized workspace for tracking systems, vulnerabilities, POA&Ms, security assessments, and FISMA reporting — all without requiring a backend or database.
+
+## Screenshot
+
+![RMF Tracker Dashboard](./screenshots/RMF_Tracker.png)
+
+*The main dashboard provides an at-a-glance view of your organization's security posture, including total vulnerabilities, open POA&Ms, POAM coverage percentage, system status, and top affected controls.*
 
 ## Features
 
@@ -57,5 +63,6 @@ Open your browser and navigate to `http://localhost:5173` (or whichever port you
 MIT
 
 ---
-
-Feel free to swap in your actual GitHub org/repo URL, add a screenshot, or let me know if you'd like any sections expanded (e.g., a contributing guide, deployment instructions, or a badge section).
+> mkdir screenshots
+> # then move/copy your image there
+> ```
