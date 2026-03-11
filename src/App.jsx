@@ -12963,7 +12963,7 @@ export default function App() {
       </div>
 
       {/* Main content */}
-      <div style={{ marginLeft: 220, padding: 0, minHeight: "100vh" }}>
+      <div style={{ marginLeft: 220, padding: 0, minHeight: "100vh", width: "calc(100vw - 220px)", overflowX: "hidden" }}>
         {tab === "dashboard" && <Dashboard systems={systems} vulnerabilities={vulnerabilities} poams={poams} />}
         {tab === "systems" && <SystemsView systems={systems} setSystems={setSystems} vulnerabilities={vulnerabilities} controlStatuses={controlStatuses} setControlStatuses={setControlStatuses} activeSystemId={activeSystemId} setActiveSystemId={setActiveSystemId} />}
         {tab === "vulnerabilities" && <VulnerabilitiesView vulnerabilities={vulnerabilities} setVulnerabilities={setVulnerabilities} systems={systems} setPoams={setPoams} defaultSystemId={activeSystemId} />}
