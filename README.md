@@ -63,6 +63,3 @@ Open your browser and navigate to `http://localhost:5173` (or whichever port you
 MIT
 
 ---
-> mkdir screenshots
-> # then move/copy your image there
-> ```
