@@ -12,7 +12,7 @@ NIST RMF Tracker is a single-file React application designed to help security te
 
 ## Screenshot
 
-![RMF Tracker Dashboard](./screenshots/RMF_Tracker.png)
+![RMF Tracker Dashboard](screenshots/RMF_Tracker.png)
 
 *The main dashboard provides an at-a-glance view of your organization's security posture, including total vulnerabilities, open POA&Ms, POAM coverage percentage, system status, and top affected controls.*
 
